@@ -8,17 +8,18 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import StepLR
 import config as cfg
 from test import test
-from model import Net
-from utils import torch_utils
+from model import Net, weight_init
+from utils import torch_utils, display
 
 
 def train(model,
           data_config,
           ntype,
+          lr0 = 0.01,
           batch_size = 32,
-          epochs = 10000,
+          epochs = 2000,
           resume = False,   # 是否重新训练
-          weights_path = "weights"):
+          weights_path = "weights/Paper"):
     device = torch_utils.select_device()
     model.to(device)
     weights_path = os.path.join(weights_path, ntype)
@@ -56,12 +57,16 @@ def train(model,
                         shuffle=True,
                         batch_size=batch_size)
     
-    lr0 = 0.001
-    optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=lr0, momentum=0.9)
-    # scheduler = StepLR(optimizer, step_size=10000, gamma=0.5)
+    # lr0 = 0.001
+    # optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=lr0, momentum=0.9)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr0, betas=(0.9, 0.999), eps=1e-08)
+    # step_size 是按batch迭代次数算
+    scheduler = StepLR(optimizer, step_size=2000, gamma=0.5)
+
     if resume:
         start_epoch = 0
         best_loss = float("inf")
+        # model.apply(weight_init)
     else:
         checkpoint = torch.load(latest_weights_file)
         model.load_state_dict(checkpoint['model'])
@@ -72,8 +77,8 @@ def train(model,
         del checkpoint
         
     model.train()
-    train_loss = list()
-    test_loss = list()
+    train_loss_list = list()
+    test_loss_list = list()
     for epoch in range(start_epoch, epochs, 1):
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
@@ -82,8 +87,14 @@ def train(model,
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
+            # print("lr = {}".format(optimizer.param_groups[0]["lr"]))
+            scheduler.step()
         train_loss = test(model, train_loader, criterion)
         test_loss = test(model, test_loader, criterion)
+
+        # if (epoch+1)%5 == 0:
+        train_loss_list.append(train_loss)
+        test_loss_list.append(test_loss)
 
         checkpoint = {'epoch': epoch,
                       'best_loss': best_loss,
@@ -98,6 +109,8 @@ def train(model,
                 latest_weights_file,
                 best_weights_file,
             ))
+    display.draw_loss(train_loss_list, test_loss_list)
+
     # # min_test_loss = np.inf
     # # for epoch in range(epochs):
     # #     model.train()
@@ -129,6 +142,8 @@ if __name__ == "__main__":
     #     checkpoint = torch.load(cfg.config["ckpt"])
     #     # print(checkpoint)
     #     model.load_state_dict(checkpoint['model'])
+    lr0 = cfg.config["lr0"]
+    weights_path = cfg.config["weights_path"]
     batch_size = cfg.config["batch_size"]
     epochs = cfg.config["epochs"]
-    train(model, cfg.config, ntype, batch_size, epochs, True)
+    train(model, cfg.config, ntype, lr0=lr0, batch_size=batch_size, epochs=epochs, resume=True, weights_path=weights_path)

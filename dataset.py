@@ -64,7 +64,7 @@ class BMDataset(Dataset):
         # self.label = data_all[:, -1].astype(np.float32)
         self.data_all = (data_all - self.min)/(self.max - self.min)
         # print(data_all)
-        self.data_all = (self.data_all-self.mu)/self.sigma
+        # self.data_all = (self.data_all-self.mu)/self.sigma
         self.data = self.data_all[:, :-1].astype(np.float32)
         self.label = self.data_all[:, -1].astype(np.float32)
 
@@ -90,8 +90,8 @@ class BMDataset(Dataset):
     
     
     def decode_label(self, label):
-        dlabel = label*self.sigma[-1] + self.mu[-1]
-        dlabel = dlabel * (self.max[-1]-self.min[-1]) + self.min[-1]
+        # dlabel = label*self.sigma[-1] + self.mu[-1]
+        dlabel = label * (self.max[-1]-self.min[-1]) + self.min[-1]
 
         return dlabel
 

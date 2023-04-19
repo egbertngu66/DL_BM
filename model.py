@@ -6,6 +6,17 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 
+def weight_init(m):
+    if isinstance(m, nn.Conv2d):
+        nn.init.xavier_uniform(m.weight.data)
+    elif isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform(m.weight.data)
+        m.bias.data.fill_(1)
+    elif isinstance(m, nn.BatchNorm2d):
+        nn.init.constant_(m.weight.data, 1)
+        nn.init.constant_(m.bias.data, 0)                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+
+
 class Net(nn.Module):
     def __init__(self, ntype):
         super(Net, self).__init__()
@@ -44,6 +55,6 @@ class Net(nn.Module):
         x = F.relu(x)
         # 1*64 --> 1*1
         x = self.fc3(x)
-        # x = F.sigmoid(x)
+        x = torch.sigmoid(x)
         x = x.squeeze(-1)
         return x

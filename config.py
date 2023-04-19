@@ -5,7 +5,9 @@ config = {
     "data_max": "data/max.npy",
     "data_path": "data/1-s2.0-S0950061822007656-mmc1.xlsx",
     "ntype": "Conv",
-    "batch_size": 128,
-    "epochs": 1000000,
+    "weights_path": "weights",
+    "lr0": 0.001,
+    "batch_size": 64,
+    "epochs": 500,
     "ckpt": "weights/Conv/best.pt"
 }

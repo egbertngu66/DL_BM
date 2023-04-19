@@ -5,6 +5,7 @@ import config as cfg
 from model import Net
 from dataset import BMDataset
 from utils.eval_indicators import Indicators
+from utils import display
 
 
 def inference(model, data):
@@ -44,7 +45,7 @@ def get_predicts_labels(model, dataset):
         # labels.append(target.item())
     predicts = np.array(predicts)
     labels = np.array(labels)
-    print("predicts:\n{}\nlabels:\n{}".format(predicts, labels))
+    # print("predicts:\n{}\nlabels:\n{}".format(predicts, labels))
 
     return predicts, labels
 
@@ -77,7 +78,8 @@ def main():
     train_MAPE = train_indicators.MAPE()
     train_RMSE = train_indicators.RMSE()
     train_MAE = train_indicators.MAE()
-    print("***Training set*** R2: {}, MAPE: {}, RMSE: {}, MAE: {}".format(train_R2, train_MAPE, train_RMSE, train_MAE))
+    display.draw_actual_vs_predict(train_labels, train_preds, "Training set\nR2={}".format(round(train_R2, 4)))
+    # print("***Training set*** R2: {}, MAPE: {}, RMSE: {}, MAE: {}".format(train_R2, train_MAPE, train_RMSE, train_MAE))
 
     valid_preds, valid_labels = get_predicts_labels(model, valid_dataset)
     valid_indicators = Indicators(valid_preds, valid_labels)
@@ -85,7 +87,8 @@ def main():
     valid_MAPE = valid_indicators.MAPE()
     valid_RMSE = valid_indicators.RMSE()
     valid_MAE = valid_indicators.MAE()
-    print("***Valid set*** R2: {}, MAPE: {}, RMSE: {}, MAE: {}".format(valid_R2, valid_MAPE, valid_RMSE, valid_MAE))
+    # print("***Valid set*** R2: {}, MAPE: {}, RMSE: {}, MAE: {}".format(valid_R2, valid_MAPE, valid_RMSE, valid_MAE))
+    display.draw_actual_vs_predict(valid_labels, valid_preds, "Test set\nR2={}".format(round(valid_R2, 4)))
 
     test_preds, test_labels = get_predicts_labels(model, test_dataset)
     test_indicators = Indicators(test_preds, test_labels)
@@ -93,8 +96,8 @@ def main():
     test_MAPE = test_indicators.MAPE()
     test_RMSE = test_indicators.RMSE()
     test_MAE = test_indicators.MAE()
-    print("***Test set*** R2: {}, MAPE: {}, RMSE: {}, MAE: {}".format(test_R2, test_MAPE, test_RMSE, test_MAE))
-
+    # print("***Test set*** R2: {}, MAPE: {}, RMSE: {}, MAE: {}".format(test_R2, test_MAPE, test_RMSE, test_MAE))
+    display.draw_actual_vs_predict(test_labels, test_preds, "Valid set\nR2={}".format(round(test_R2, 4)))
 
 if __name__ == "__main__":
     main()
