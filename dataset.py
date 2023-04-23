@@ -2,9 +2,10 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
+import os
 
 
-def load_data(fpath, dtype):
+def  load_data(fpath, dtype):
     '''从excel中加载数据, 只加载data和label对应的十列数据, 标签顺序如下:
     [cement, water, sand, natrual aggreate, recycled aggrate, fly ash, silica fume, slag, slump, 28d compressive strength]
 
@@ -60,7 +61,7 @@ class BMDataset(Dataset):
 
         # 加载数据
         data_all = load_data(data_fpath, dtype).astype(np.float32)
-        # print(data_all)
+        print(data_all)
         # self.label = data_all[:, -1].astype(np.float32)
         self.data_all = (data_all - self.min)/(self.max - self.min)
         # print(data_all)
@@ -104,7 +105,7 @@ if __name__ == "__main__":
         data_min = np.load(config["data_min"], allow_pickle= True)
         data_max = np.load(config["data_max"], allow_pickle= True)
     else:
-        raise ValueError("Please run script to get data_min.npy and data_max.npy")
+        raise ValueError("Please run script utils/cal_min_max.py to get data_min.npy and data_max.npy")
     # 加载数据集变量的均值和方差
     if "data_mu" in config and "data_sigma" in config:
         data_mu = np.load(config["data_mu"], allow_pickle= True)
@@ -113,4 +114,4 @@ if __name__ == "__main__":
         raise ValueError("Please run script to get data_mu.npy and data_sigma.npy")
     ntype = config["ntype"]
     bm_dataset = BMDataset(data_fpath, data_min, data_max, data_mu, data_sigma, ntype, "train")
-    print(bm_dataset.__getitem__(0))
+    print(bm_dataset.__getitem__(5))

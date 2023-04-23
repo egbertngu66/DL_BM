@@ -62,7 +62,7 @@ def main():
         data_min = np.load(cfg.config["data_min"], allow_pickle= True)
         data_max = np.load(cfg.config["data_max"], allow_pickle= True)
     else:
-        raise ValueError("Please run script to get data_min.npy and data_max.npy")
+        raise ValueError("Please run script utils/cal_min_max.py to get data_min.npy and data_max.npy")
     if "data_mu" in cfg.config and "data_sigma" in cfg.config:
         data_mu = np.load(cfg.config["data_mu"], allow_pickle= True)
         data_sigma = np.load(cfg.config["data_sigma"], allow_pickle= True)

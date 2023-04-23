@@ -1,4 +1,5 @@
 import os
+import shutil
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -105,10 +106,12 @@ def train(model,
         if test_loss < best_loss:
             print('===epoch: {} === Test set: Average loss: {:.8f}'.format(epoch+1, test_loss))
             best_loss = test_loss
-            os.system('cp {} {}'.format(
-                latest_weights_file,
-                best_weights_file,
-            ))
+            # os.system('cp {} {}'.format(
+            #     latest_weights_file,
+            #     best_weights_file,
+            # ))
+            shutil.copy(latest_weights_file, best_weights_file)
+            
     display.draw_loss(train_loss_list, test_loss_list)
 
     # # min_test_loss = np.inf
