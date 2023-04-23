@@ -26,8 +26,16 @@ def save_model_param_as_excel(save_path, model_param):
     for key, value in model_param.items():
         if 'bn' in key:
             continue
-        # print("key\n:{}\nvalue:\n:{}".format(key, value))
+        # print("key\n:{}\nvalue:\n:{}".format(key, value.size()))
         value = value.cpu().numpy()
+        if value.ndim == 4:
+            OC, IC, KH, KW = value.shape
+            value_new = np.ones((KH*OC+OC-1, KW*IC+IC-1)) * np.NAN
+
+            for i in range(OC):
+                for j in range(IC):
+                    value_new[i*KH+i:(i+1)*KH+i, j*KW+j:(j+1)*KW+j] = value[i, j, :, :]
+            value = value_new
         value_frame = pd.DataFrame(value)
         value_frame.to_excel(excel_writer=writer, sheet_name=key, header=None, index=False)
     
