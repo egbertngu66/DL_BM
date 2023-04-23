@@ -13,6 +13,26 @@ from model import Net, weight_init
 from utils import torch_utils, display
 
 
+def save_model_param_as_excel(save_path, model_param):
+    '''将模型的权重文件保存为excel
+    Args: 
+        model_param: 模型参数, dict
+    Returns:
+        None
+    '''
+    import pandas as pd
+    writer = pd.ExcelWriter(save_path, engine='openpyxl')
+
+    for key, value in model_param.items():
+        if 'bn' in key:
+            continue
+        # print("key\n:{}\nvalue:\n:{}".format(key, value))
+        value = value.cpu().numpy()
+        value_frame = pd.DataFrame(value)
+        value_frame.to_excel(excel_writer=writer, sheet_name=key, header=None, index=False)
+    
+    writer.close()
+
 def train(model,
           data_config,
           ntype,
@@ -111,6 +131,11 @@ def train(model,
             #     best_weights_file,
             # ))
             shutil.copy(latest_weights_file, best_weights_file)
+        
+        # 将模型参数保存到excel
+        checkpoint_best = torch.load(best_weights_file)
+        excel_save_path = best_weights_file.replace('pt', "xlsx")
+        save_model_param_as_excel(excel_save_path, checkpoint_best['model'])
             
     display.draw_loss(train_loss_list, test_loss_list)
 
