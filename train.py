@@ -11,6 +11,7 @@ import config as cfg
 from test import test
 from model import Net, weight_init
 from utils import torch_utils, display
+import Module
 
 
 def save_model_param_as_excel(save_path, model_param):
@@ -49,8 +50,8 @@ def train(model,
           epochs = 2000,
           resume = False,   # 是否重新训练
           weights_path = "weights/Paper"):
-    device = torch_utils.select_device()
-    model.to(device)
+    # device = torch_utils.select_device()
+    # model.to(device)
     weights_path = os.path.join(weights_path, ntype)
     if not os.path.exists(weights_path):
         os.makedirs(weights_path)
@@ -59,7 +60,7 @@ def train(model,
     best_weights_file = os.path.join(weights_path, 'best.pt')
     # batch_size = config["batch_size"]
     # epochs = config["epochs"]
-    criterion = nn.MSELoss()
+    criterion = Module.MSELoss()
     # criterion = nn.L1Loss()
     
     # optimizer = optim.Adam(model.parameters(), lr=0.0001)
@@ -79,107 +80,118 @@ def train(model,
     
     train_dataset = BMDataset(data_fpath, data_min, data_max, data_mu, data_sigma, ntype, "train")
     train_loader = DataLoader(train_dataset,
-                        shuffle=True,
-                        batch_size=batch_size)
+                              shuffle=True,
+                              batch_size=batch_size,
+                              drop_last=True)
     test_dataset = BMDataset(data_fpath, data_min, data_max, data_mu, data_sigma, ntype, "valid")
     test_loader = DataLoader(test_dataset,
-                        shuffle=True,
-                        batch_size=batch_size)
+                             shuffle=True,
+                             batch_size=batch_size,
+                             drop_last=True)
     
-    # lr0 = 0.001
-    # optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=lr0, momentum=0.9)
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr0, betas=(0.9, 0.999), eps=1e-08)
-    # step_size 是按batch迭代次数算
-    scheduler = StepLR(optimizer, step_size=2000, gamma=0.5)
-
-    if resume:
-        start_epoch = 0
-        best_loss = float("inf")
-        # model.apply(weight_init)
-    else:
-        checkpoint = torch.load(latest_weights_file)
-        model.load_state_dict(checkpoint['model'])
-        start_epoch = checkpoint['epoch'] + 1
-        if checkpoint['optimizer'] is not None:
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            best_loss = checkpoint['best_loss']
-        del checkpoint
-        
-    model.train()
-    train_loss_list = list()
-    test_loss_list = list()
+    start_epoch = 0
     for epoch in range(start_epoch, epochs, 1):
         for batch_idx, (data, target) in enumerate(train_loader):
-            data, target = data.to(device), target.to(device)
-            optimizer.zero_grad()
-            output = model(data)
-            loss = criterion(output, target)
-            loss.backward()
-            optimizer.step()
-            # print("lr = {}".format(optimizer.param_groups[0]["lr"]))
-            scheduler.step()
-        train_loss = test(model, train_loader, criterion)
-        test_loss = test(model, test_loader, criterion)
+            print("epoch: {}, batch_idx: {}".format(epoch, batch_idx))
+            data, target = data.numpy(), target.numpy()
+            output = model.forward(data)
+            loss = criterion.forward(output, target)
+            dout = criterion.backward()
+            model.backward(dout)
+            print("Training loss: {}".format(loss))
 
-        # if (epoch+1)%5 == 0:
-        train_loss_list.append(train_loss)
-        test_loss_list.append(test_loss)
+    # # lr0 = 0.001
+    # # optimizer = optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=lr0, momentum=0.9)
+    # optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr0, betas=(0.9, 0.999), eps=1e-08)
+    # # step_size 是按batch迭代次数算
+    # scheduler = StepLR(optimizer, step_size=2000, gamma=0.5)
 
-        checkpoint = {'epoch': epoch,
-                      'best_loss': best_loss,
-                      'model': model.state_dict(),
-                      'optimizer': optimizer.state_dict()}
-        torch.save(checkpoint, latest_weights_file)
-
-        if test_loss < best_loss:
-            print('===epoch: {} === Test set: Average loss: {:.8f}'.format(epoch+1, test_loss))
-            best_loss = test_loss
-            # os.system('cp {} {}'.format(
-            #     latest_weights_file,
-            #     best_weights_file,
-            # ))
-            shutil.copy(latest_weights_file, best_weights_file)
+    # if resume:
+    #     start_epoch = 0
+    #     best_loss = float("inf")
+    #     # model.apply(weight_init)
+    # else:
+    #     checkpoint = torch.load(latest_weights_file)
+    #     model.load_state_dict(checkpoint['model'])
+    #     start_epoch = checkpoint['epoch'] + 1
+    #     if checkpoint['optimizer'] is not None:
+    #         optimizer.load_state_dict(checkpoint['optimizer'])
+    #         best_loss = checkpoint['best_loss']
+    #     del checkpoint
         
-        # 将模型参数保存到excel
-        checkpoint_best = torch.load(best_weights_file)
-        excel_save_path = best_weights_file.replace('pt', "xlsx")
-        save_model_param_as_excel(excel_save_path, checkpoint_best['model'])
-            
-    display.draw_loss(train_loss_list, test_loss_list)
+    # model.train()
+    # train_loss_list = list()
+    # test_loss_list = list()
+    # for epoch in range(start_epoch, epochs, 1):
+    #     for batch_idx, (data, target) in enumerate(train_loader):
+    #         data, target = data.to(device), target.to(device)
+    #         optimizer.zero_grad()
+    #         output = model(data)
+    #         loss = criterion(output, target)
+    #         loss.backward()
+    #         optimizer.step()
+    #         # print("lr = {}".format(optimizer.param_groups[0]["lr"]))
+    #         scheduler.step()
+    #     train_loss = test(model, train_loader, criterion)
+    #     test_loss = test(model, test_loader, criterion)
 
-    # # min_test_loss = np.inf
-    # # for epoch in range(epochs):
-    # #     model.train()
-    # #     for batch_idx, (data, target) in enumerate(train_loader):
-    # #         data, target = data.to(device), target.to(device)
-    # #         optimizer.zero_grad()
-    # #         output = model(data)
-    # #         loss = criterion(output, target)
-    # #         loss.backward()
-    # #         optimizer.step()
-    # #         scheduler.step()
-    # #     test_loss = test(model, test_loader, criterion, device)
-    #     # print(test_loss)
-    #     # 保存模型
-    #     if test_loss<min_test_loss:
-    #         print('===epoch: {} === Test set: Average loss: {:.4f}'.format(epoch+1, test_loss))
-    #         checkpoint = {
-    #             'model': model.state_dict(),
-    #             'optimizer': optimizer.state_dict(),
-    #             'epoch': epoch
-    #         }
-    #         torch.save(checkpoint, 'checkpoints/checkpoint.pth')
-    #     min_test_loss = min_test_loss if min_test_loss<test_loss else test_loss
+    #     # if (epoch+1)%5 == 0:
+    #     train_loss_list.append(train_loss)
+    #     test_loss_list.append(test_loss)
+
+    #     checkpoint = {'epoch': epoch,
+    #                   'best_loss': best_loss,
+    #                   'model': model.state_dict(),
+    #                   'optimizer': optimizer.state_dict()}
+    #     torch.save(checkpoint, latest_weights_file)
+
+    #     if test_loss < best_loss:
+    #         print('===epoch: {} === Test set: Average loss: {:.8f}'.format(epoch+1, test_loss))
+    #         best_loss = test_loss
+    #         # os.system('cp {} {}'.format(
+    #         #     latest_weights_file,
+    #         #     best_weights_file,
+    #         # ))
+    #         shutil.copy(latest_weights_file, best_weights_file)
+        
+    #     # 将模型参数保存到excel
+    #     checkpoint_best = torch.load(best_weights_file)
+    #     excel_save_path = best_weights_file.replace('pt', "xlsx")
+    #     save_model_param_as_excel(excel_save_path, checkpoint_best['model'])
+            
+    # display.draw_loss(train_loss_list, test_loss_list)
+
+
 
 if __name__ == "__main__":
     ntype = cfg.config["ntype"]
-    model = Net(ntype)
-    # if os.path.isfile(cfg.config["ckpt"]):
-    #     checkpoint = torch.load(cfg.config["ckpt"])
-    #     # print(checkpoint)
-    #     model.load_state_dict(checkpoint['model'])
     lr0 = cfg.config["lr0"]
     weights_path = cfg.config["weights_path"]
     batch_size = cfg.config["batch_size"]
     epochs = cfg.config["epochs"]
+    if ntype == "Conv":
+        inshape = (batch_size, 1, 3, 3)
+    elif ntype == "Linear":
+        inshape = (batch_size, 9)
+    else:
+        pass
+
+    model = Net(ntype, lr0, inshape)
+    # if os.path.isfile(cfg.config["ckpt"]):
+    #     checkpoint = torch.load(cfg.config["ckpt"])
+    #     # print(checkpoint)
+    #     model.load_state_dict(checkpoint['model'])
+    
     train(model, cfg.config, ntype, lr0=lr0, batch_size=batch_size, epochs=epochs, resume=True, weights_path=weights_path)
+
+    # ntype = cfg.config["ntype"]
+    # model = Net(ntype)
+    # # if os.path.isfile(cfg.config["ckpt"]):
+    # #     checkpoint = torch.load(cfg.config["ckpt"])
+    # #     # print(checkpoint)
+    # #     model.load_state_dict(checkpoint['model'])
+    # lr0 = cfg.config["lr0"]
+    # weights_path = cfg.config["weights_path"]
+    # batch_size = cfg.config["batch_size"]
+    # epochs = cfg.config["epochs"]
+    # train(model, cfg.config, ntype, lr0=lr0, batch_size=batch_size, epochs=epochs, resume=True, weights_path=weights_path)

@@ -8,6 +8,6 @@ config = {
     "weights_path": "weights",
     "lr0": 0.001,
     "batch_size": 64,
-    "epochs": 5,
+    "epochs": 500,
     "ckpt": "weights/Linear/best.pt"
 }
