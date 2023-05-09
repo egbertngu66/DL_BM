@@ -12,7 +12,7 @@ class Conv2d(object):
             padding=0, 
             use_bias = False    # 是否使用偏置
         ) -> None:
-        self.ltype = "Conv"
+        self.ltype = "Conv2d"
         self.input_shape = shape
         self.output_channels = output_channels
         self.input_channels = shape[1]
@@ -38,12 +38,12 @@ class Conv2d(object):
             "grad": np.zeros(bias_shape)
         }
 
-        self.output_shape = (
+        self.output_shape = [
             self.batch_size,
             self.output_channels,
             int((shape[2]+2*self.padding - ksize[0]) / self.stride + 1),
             int((shape[3]+2*self.padding - ksize[1]) / self.stride + 1)     
-        )
+        ]
         
         self.cache = None
         # # eta 存放 backward时Loss对Layer out的求导
@@ -60,7 +60,8 @@ class Conv2d(object):
         Returns:
             self.out: 卷积结果, nd.array, shape = (N, OC, OH, OW)
         '''
-        # self.batch_size = x.shape[0]
+        self.batch_size = x.shape[0]
+        self.output_shape[0] = self.batch_size
         N, OC, OH, OW = self.output_shape
         self.out = np.zeros(self.output_shape)
         x = np.pad(x, ((0, 0), (0, 0), (self.padding, self.padding), (self.padding, self.padding)), 'constant', constant_values=0)
@@ -77,7 +78,6 @@ class Conv2d(object):
                         # print("n = {}; c = {}; i = {}; j = {}".format(n,c,i,j))
                         # print(np.sum(window*self.weight['value'][c]))
                         self.out[n, c, i, j] = np.sum(window*self.weight['value'][c])
-
         
         # weight_cols = self.weight.reshape((self.output_channels, -1))  # shape = (OC, IC*KW*KH)
         # x_cols = im2col(x, self.ksize, self.stride, self.pad)
@@ -100,6 +100,7 @@ class Conv2d(object):
         # x_pad = np.pad(x, ((0, 0), (0, 0), (self.padding, self.padding), (self.padding, self.padding)), 'constant', constant_values=0)
         N, IC, IH, IW = x.shape
         N, OC, OH, OW = dout.shape
+        KH, KW = self.ksize[0], self.ksize[1]
         x_grad = np.zeros(x.shape)
 
         # weight求导
@@ -232,21 +233,21 @@ if __name__ == "__main__":
         "stride": stride,
         "ksize": [KH, KW]
     }
-    check_gradient(image, w, b, x_grad, w_grad, b_grad, dout, param)
+    # check_gradient(image, w, b, x_grad, w_grad, b_grad, dout, param)
 
-    # # pytorch卷积输出
-    # x_tensor = torch.Tensor(image).double()
-    # # w_tensor = torch.Tensor(conv.weight['value'])
-    # # b_tensor = torch.Tensor(conv.bias['value'])
-    # # print("b_tensor: ", b_tensor)
-    # conv_pt = nn.Conv2d(IC, OC, (KH, KW), stride=stride, padding=padding, bias=use_bias)
-    # conv_pt.weight = nn.Parameter(torch.DoubleTensor(conv.weight['value']))
-    # conv_pt.bias = nn.Parameter(torch.DoubleTensor(conv.bias['value']))
-    # y_tensor = conv_pt(x_tensor)
-    # y_tensor.backward(torch.Tensor(dout))
+    # pytorch卷积输出
+    x_tensor = torch.Tensor(image).double()
+    # w_tensor = torch.Tensor(conv.weight['value'])
+    # b_tensor = torch.Tensor(conv.bias['value'])
+    # print("b_tensor: ", b_tensor)
+    conv_pt = nn.Conv2d(IC, OC, (KH, KW), stride=stride, padding=padding, bias=use_bias)
+    conv_pt.weight = nn.Parameter(torch.DoubleTensor(conv.weight['value']))
+    conv_pt.bias = nn.Parameter(torch.DoubleTensor(conv.bias['value']))
+    y_tensor = conv_pt(x_tensor)
+    y_tensor.backward(torch.Tensor(dout))
     
-    # # print("y: {}\ny_tensor: {}".format(y, y_tensor))
+    # print("y: {}\ny_tensor: {}".format(y, y_tensor))
     
-    # print("diff y: ", np.mean(np.abs(y-y_tensor.detach().numpy())))
-    # print("diff grad w: ", np.mean(np.abs(w_grad-conv_pt.weight.grad.numpy())))
-    # print("diff grad b: ", np.mean(np.abs(b_grad-conv_pt.bias.grad.numpy())))
+    print("diff y: ", np.mean(np.abs(y-y_tensor.detach().numpy())))
+    print("diff grad w: ", np.mean(np.abs(w_grad-conv_pt.weight.grad.numpy())))
+    print("diff grad b: ", np.mean(np.abs(b_grad-conv_pt.bias.grad.numpy())))

@@ -4,5 +4,4 @@ from .BatchNorm import BatchNorm
 from .Activation import Relu, Sigmoid
 from .Model import Model
 from .Criterion import MSELoss
-
-import numpy as np
+from .optimizer import SGD

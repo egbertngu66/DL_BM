@@ -19,27 +19,32 @@ def linear(x, w, b=None):
 
 
 class Linear(object):
+    
     def __init__(
             self, 
             in_features,
             out_features, 
-            use_bias = False    # 是否使用偏置
+            use_bias = True    # 是否使用偏置
         ) -> None:
-        
+        np.random.seed(1)
         self.ltype = "Linear"
         self.in_features = in_features
         self.out_features = out_features
         self.use_bias = use_bias
 
+        weight_scale = 1/in_features
         weight_shape = (self.out_features, self.in_features)
         self.weight = {
-            "value": (np.random.standard_normal(weight_shape)).astype('float64'),
+            "value": (np.random.randn(self.out_features, self.in_features) * np.sqrt(2 / self.in_features)).astype('float64'),
+            # "value": (np.random.uniform(-weight_scale, weight_scale,weight_shape)).astype('float64'),
             "grad": np.zeros(weight_shape)
         }
 
         bias_shape = (self.out_features,)
         self.bias = {
-            "value": (np.random.standard_normal(bias_shape)).astype('float64'),
+            "value": np.zeros(bias_shape),
+            # "value": (np.random.randn(self.out_features,)* np.sqrt(2 / self.in_features)).astype('float64'),
+            # "value": (np.random.uniform(-weight_scale, weight_scale, bias_shape)).astype('float64'),
             "grad": np.zeros(bias_shape)
         }
 
@@ -55,13 +60,13 @@ class Linear(object):
         '''
         self.cache = x
 
-        # self.out = np.dot(x, self.weight['value'].T)
-        # if self.use_bias:
-        #     self.out = self.out+self.bias['value']
+        self.out = np.dot(x, self.weight['value'].T)
         if self.use_bias:
-            self.out = linear(x, self.weight['value'], self.bias['value'])
-        else:
-            self.out = linear(x, self.weight['value'])
+            self.out = self.out+self.bias['value']
+        # if self.use_bias:
+        #     self.out = linear(x, self.weight['value'], self.bias['value'])
+        # else:
+        #     self.out = linear(x, self.weight['value'])
 
         return self.out
 
@@ -106,8 +111,10 @@ def check_gradient(x, w, b, dx, dw, db, dout):
 
 
 if __name__ == "__main__":
+    import torch.nn as nn
+    import torch
 
-    use_bias = True
+    use_bias = False
     N = 10
     in_num = 20
     out_num = 30
@@ -144,19 +151,19 @@ if __name__ == "__main__":
     # y = fc.forward(input)
     # _, w_grad, b_grad = fc.backward(dout)
 
-    # # pytorch卷积输出
-    # x_tensor = torch.Tensor(input).double()
-    # # w_tensor = torch.Tensor(conv.weight['value'])
-    # # b_tensor = torch.Tensor(conv.bias['value'])
+    # pytorch卷积输出
+    x_tensor = torch.Tensor(input).double()
+    # w_tensor = torch.Tensor(conv.weight['value'])
+    # b_tensor = torch.Tensor(conv.bias['value'])
     # # print("b_tensor: ", b_tensor)
-    # fc_pt = nn.Linear(in_num, out_num, bias=True)
-    # fc_pt.weight = nn.Parameter(torch.DoubleTensor(fc.weight['value']))
+    fc_pt = nn.Linear(in_num, out_num, bias=use_bias)
+    fc_pt.weight = nn.Parameter(torch.DoubleTensor(fc.weight['value']))
     # fc_pt.bias = nn.Parameter(torch.DoubleTensor(fc.bias['value']))
-    # y_tensor = fc_pt(x_tensor)
+    y_tensor = fc_pt(x_tensor)
     # y_tensor.backward(torch.Tensor(dout))
     
     # # print("y: {}\ny_tensor: {}".format(y, y_tensor))
     
-    # print("diff y: ", np.mean(np.abs(y-y_tensor.detach().numpy())))
+    print("diff y: ", np.mean(np.abs(y-y_tensor.detach().numpy())))
     # print("diff grad w: ", np.mean(np.abs(w_grad-fc_pt.weight.grad.numpy())))
     # print("diff grad b: ", np.mean(np.abs(b_grad-fc_pt.bias.grad.numpy())))
