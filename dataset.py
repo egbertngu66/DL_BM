@@ -61,7 +61,7 @@ class BMDataset(Dataset):
 
         # 加载数据
         data_all = load_data(data_fpath, dtype).astype(np.float32)
-        print(data_all)
+        # print(data_all)
         # self.label = data_all[:, -1].astype(np.float32)
         self.data_all = (data_all - self.min)/(self.max - self.min)
         # print(data_all)

@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
 import os
-ROOT_PATH = os.path.abspath(__file__).split('/utils/')[0]
+ROOT_PATH = os.path.abspath(__file__).split('utils')[0]
 import sys
+print(ROOT_PATH)
 sys.path.append(ROOT_PATH)
 import config as cfg
 

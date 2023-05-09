@@ -7,6 +7,44 @@ from dataset import BMDataset
 from utils.eval_indicators import Indicators
 from utils import display
 
+def inference_numpy(model, data):
+    model.eval()
+    if model.ntype == "Linear":
+        data = data.reshape(1, -1)
+    elif model.ntype == "Conv":
+        data = data.reshape(1, 1, 3, 3)
+    output = model.forward(data)
+    return output
+
+
+def get_predicts_labels_numpy(model, dataset):
+    '''获取数据集的预测值和真实值
+    Args:
+        model: 训练后的模型
+        dataset: BMDataset
+    Returns:
+        predicts: 预测值, shape = (N, ), np.array
+        labels: 样本标签值, shape = (N, ), np.array
+    '''
+    
+    predicts = list()
+    labels = list()
+    
+    for data, target in dataset:
+        data = data.numpy()
+        predict = inference_numpy(model, data)
+        predict = dataset.decode_label(predict.item())
+        target = dataset.decode_label(target.item())
+        predicts.append(predict)
+        labels.append(target)
+        # predicts.append(predict.cpu().item())
+        # labels.append(target.item())
+    predicts = np.array(predicts)
+    labels = np.array(labels)
+    print("predicts:\n{}\nlabels:\n{}".format(predicts, labels))
+
+    return predicts, labels
+
 
 def inference(model, data):
     device = torch_utils.select_device()
@@ -52,11 +90,20 @@ def get_predicts_labels(model, dataset):
 
 def main():
     ntype = cfg.config["ntype"]
-    model = Net(ntype)
-    checkpoint = torch.load(cfg.config["ckpt"])
-    # print(checkpoint)
-    model.load_state_dict(checkpoint['model'])
+    batch_size = cfg.config["batch_size"]
+    if ntype == "Conv":
+        inshape = (batch_size, 1, 3, 3)
+    elif ntype == "Linear":
+        inshape = (batch_size, 9)
+    else:
+        pass
 
+    model = Net(ntype, inshape)
+    checkpoint = np.load(cfg.config["ckpt"], allow_pickle=True).item()
+    # print(type(checkpoint))
+    # print(checkpoint['model'])
+    model.load_state_dict(checkpoint['model'])
+    # print(model.parameters())
     data_fpath = cfg.config["data_path"]
     if "data_min" in cfg.config and "data_max" in cfg.config:
         data_min = np.load(cfg.config["data_min"], allow_pickle= True)
@@ -72,7 +119,7 @@ def main():
     valid_dataset = BMDataset(data_fpath, data_min, data_max, data_mu, data_sigma, ntype, "valid")
     test_dataset = BMDataset(data_fpath, data_min, data_max, data_mu, data_sigma, ntype, "test")
 
-    train_preds, train_labels = get_predicts_labels(model, train_dataset)
+    train_preds, train_labels = get_predicts_labels_numpy(model, train_dataset)
     train_indicators = Indicators(train_preds, train_labels)
     train_R2 = train_indicators.R_square()
     train_MAPE = train_indicators.MAPE()
@@ -81,7 +128,7 @@ def main():
     display.draw_actual_vs_predict(train_labels, train_preds, "Training set\nR2={}".format(round(train_R2, 4)))
     # print("***Training set*** R2: {}, MAPE: {}, RMSE: {}, MAE: {}".format(train_R2, train_MAPE, train_RMSE, train_MAE))
 
-    valid_preds, valid_labels = get_predicts_labels(model, valid_dataset)
+    valid_preds, valid_labels = get_predicts_labels_numpy(model, valid_dataset)
     valid_indicators = Indicators(valid_preds, valid_labels)
     valid_R2 = valid_indicators.R_square()
     valid_MAPE = valid_indicators.MAPE()
@@ -90,7 +137,7 @@ def main():
     # print("***Valid set*** R2: {}, MAPE: {}, RMSE: {}, MAE: {}".format(valid_R2, valid_MAPE, valid_RMSE, valid_MAE))
     display.draw_actual_vs_predict(valid_labels, valid_preds, "Test set\nR2={}".format(round(valid_R2, 4)))
 
-    test_preds, test_labels = get_predicts_labels(model, test_dataset)
+    test_preds, test_labels = get_predicts_labels_numpy(model, test_dataset)
     test_indicators = Indicators(test_preds, test_labels)
     test_R2 = test_indicators.R_square()
     test_MAPE = test_indicators.MAPE()
